@@ -9,7 +9,6 @@
 		"noUnusedLocals": true,
 		"paths": {
 			"@onify/fake-amqplib": ["./node_modules/@types/amqplib"],
-			"*": ["./dist/types/*", "./dist/schema/*"]
 		},
 		"esModuleInterop": true,
 		"skipLibCheck": false,

@@ -17,3 +17,4 @@ export { default as amqpProducerCreator } from './amqpProducerCreator';
 export type { TAmqpProducerParams } from './amqpProducerCreator';
 export { default as amqpWorker } from './amqpWorker';
 export { default as deriveKeyId } from './lib/deriveKeyId';
+export * as Errors from './Errors';
