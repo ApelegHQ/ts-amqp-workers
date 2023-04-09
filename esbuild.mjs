@@ -18,7 +18,7 @@
 import esbuild from 'esbuild';
 
 await esbuild.build({
-	entryPoints: ['./src/index.ts'],
+	entryPoints: ['./src/index.ts', './src/Errors.ts'],
 	outdir: process.env['BUILD_TARGET_DIR'] || 'dist',
 	bundle: true,
 	minify: true,
@@ -29,7 +29,7 @@ await esbuild.build({
 });
 
 await esbuild.build({
-	entryPoints: ['./src/index.ts'],
+	entryPoints: ['./src/index.ts', './src/Errors.ts'],
 	outdir: process.env['BUILD_TARGET_DIR'] || 'dist',
 	bundle: true,
 	minify: true,
