@@ -48,7 +48,9 @@ const amqpWorker = async (
 			| void;
 	},
 	errorHandler?: {
-		(e: Error, props: amqplib.MessageProperties): void;
+		(e: Error, props: amqplib.MessageProperties):
+			| TAmqpProducerParams[]
+			| void;
 	},
 ) => {
 	const textEncoder = new TextEncoder();
@@ -142,14 +144,16 @@ const amqpWorker = async (
 				) ||
 				!msg.properties.headers['x-sender-key-id']
 			) {
-				errorHandler &&
+				const er =
+					errorHandler &&
+					typeof errorHandler === 'function' &&
 					errorHandler(
 						new UnsupportedMessageWarning(),
 						msg.properties,
 					);
 
 				ch.reject(msg, false);
-				return;
+				return er;
 			}
 
 			Promise.resolve(propertiesValidator(msg.properties))
@@ -233,7 +237,8 @@ const amqpWorker = async (
 				.then(() => ch.ack(msg))
 				.catch((e) => {
 					try {
-						errorHandler &&
+						const er =
+							errorHandler &&
 							typeof errorHandler === 'function' &&
 							errorHandler(
 								e && e instanceof ProcessingError
@@ -241,6 +246,8 @@ const amqpWorker = async (
 									: new ProcessingError(e),
 								msg.properties,
 							);
+
+						return er;
 					} catch (e) {
 						// empty
 					}
