@@ -13,18 +13,43 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-export class ConsumerCancelledError extends Error {}
-export class UnsupportedMessageWarning extends Error {}
-export class MessageIntegrityError extends Error {}
-export class ProcessingError extends Error {
-	originalError: unknown;
+const NamedCausalErrorGenerator = (
+	name: string,
+	base: { new (): Error } = Error,
+) =>
+	class extends base {
+		cause: unknown;
 
-	constructor(e: unknown) {
-		super();
-		this.originalError = e;
-	}
-}
-export class DecryptionError extends ProcessingError {}
-export class MessageHandlerError extends ProcessingError {}
-export class RequeuableSoftError extends ProcessingError {}
-export class OutgoingMessageError extends ProcessingError {}
+		constructor(e?: unknown) {
+			super();
+			this.name = name;
+			if (e) this.cause = e;
+		}
+	};
+export const ConsumerCancelledError = NamedCausalErrorGenerator(
+	'ConsumerCancelledError',
+);
+export const UnsupportedMessageWarning = NamedCausalErrorGenerator(
+	'UnsupportedMessageWarning',
+);
+export const MessageIntegrityError = NamedCausalErrorGenerator(
+	'MessageIntegrityError',
+);
+export const ProcessingError = NamedCausalErrorGenerator('ProcessingError');
+
+export const DecryptionError = NamedCausalErrorGenerator(
+	'DecryptionError',
+	ProcessingError,
+);
+export const MessageHandlerError = NamedCausalErrorGenerator(
+	'MessageHandlerError',
+	ProcessingError,
+);
+export const RequeuableSoftError = NamedCausalErrorGenerator(
+	'RequeuableSoftError',
+	ProcessingError,
+);
+export const OutgoingMessageError = NamedCausalErrorGenerator(
+	'OutgoingMessageError',
+	ProcessingError,
+);
