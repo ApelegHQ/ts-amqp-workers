@@ -144,16 +144,16 @@ const amqpWorker = async (
 				) ||
 				!msg.properties.headers['x-sender-key-id']
 			) {
-				const er =
-					errorHandler &&
+				errorHandler &&
 					typeof errorHandler === 'function' &&
-					errorHandler(
-						new UnsupportedMessageWarning(),
-						msg.properties,
-					);
+					Promise.all(
+						errorHandler(
+							new UnsupportedMessageWarning(),
+							msg.properties,
+						)?.map(outgoingMessageHelper) ?? [],
+					).catch(Boolean);
 
 				ch.reject(msg, false);
-				return er;
 			}
 
 			Promise.resolve(propertiesValidator(msg.properties))
@@ -237,17 +237,16 @@ const amqpWorker = async (
 				.then(() => ch.ack(msg))
 				.catch((e) => {
 					try {
-						const er =
-							errorHandler &&
+						errorHandler &&
 							typeof errorHandler === 'function' &&
-							errorHandler(
-								e && e instanceof ProcessingError
-									? e
-									: new ProcessingError(e),
-								msg.properties,
-							);
-
-						return er;
+							Promise.all(
+								errorHandler(
+									e && e instanceof ProcessingError
+										? e
+										: new ProcessingError(e),
+									msg.properties,
+								)?.map(outgoingMessageHelper) ?? [],
+							).catch(Boolean);
 					} catch (e) {
 						// empty
 					}
