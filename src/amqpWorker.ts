@@ -31,6 +31,11 @@ import deriveKeyId from './lib/deriveKeyId';
 import { decryptPayload } from './lib/encryptPayload';
 import normalizeHeaders from './lib/normalizeHeaders';
 
+export type TAmqpWorkerContext = {
+	['ap$selfPub$CK']: CryptoKey;
+	['ap$self$Kid']: string;
+};
+
 const amqpWorker = async (
 	ch: amqplib.Channel,
 	inputQueue: string,
@@ -39,46 +44,67 @@ const amqpWorker = async (
 	sourceJwkPublicKeys: string[],
 	incomingSchemaIds: string[],
 	propertiesValidator: {
-		(props: amqplib.MessageProperties): Promise<boolean> | boolean;
+		(props: amqplib.MessageProperties, ctx: TAmqpWorkerContext):
+			| Promise<boolean>
+			| boolean;
 	},
 	messageHandler: {
-		(props: amqplib.MessageProperties, msg: ArrayBuffer):
-			| Promise<TAmqpProducerParams[] | void>
-			| TAmqpProducerParams[]
-			| void;
+		(
+			props: amqplib.MessageProperties,
+			msg: ArrayBuffer,
+			ctx: TAmqpWorkerContext,
+		): Promise<TAmqpProducerParams[] | void> | TAmqpProducerParams[] | void;
 	},
 	errorHandler?: {
-		(e: Error, props: amqplib.MessageProperties):
+		(e: Error, props: amqplib.MessageProperties, ctx: TAmqpWorkerContext):
 			| TAmqpProducerParams[]
 			| void;
 	},
 ) => {
 	const textEncoder = new TextEncoder();
 
-	const ap$self$JwkObj = JSON.parse(ap$self$);
+	const [ap$self$CK, ap$selfPub$CK, ap$self$Kid] = await (async () => {
+		const ap$self$JwkObj = JSON.parse(ap$self$);
+		// Clear ap$self$
+		ap$self$ = undefined as unknown as string;
 
-	const ap$self$CK = await globalThis.crypto.subtle.importKey(
-		'jwk',
-		ap$self$JwkObj,
-		{ ['name']: 'ECDH', ['namedCurve']: ap$self$JwkObj['crv'] },
-		false,
-		['deriveKey'],
-	);
+		const ap$self$CK = await globalThis.crypto.subtle.importKey(
+			'jwk',
+			ap$self$JwkObj,
+			{ ['name']: 'ECDH', ['namedCurve']: ap$self$JwkObj['crv'] },
+			false,
+			['deriveKey'],
+		);
 
-	const ap$self$Kid = await (async () => {
-		const ap$selfPub$JwkObj = { ...ap$self$JwkObj, ['d']: undefined };
-		delete ap$selfPub$JwkObj['d'];
+		// To get the KID, we need an extractable
+		// public key.
+		// We delete all the secret values from ap$self$JwkObj
+		// For ECDH / OKP keys, this is only 'd', but if we happened
+		// to have an RSA key, we'd have some additional secret values
+		delete ap$self$JwkObj['d'];
+		delete ap$self$JwkObj['p'];
+		delete ap$self$JwkObj['q'];
+		delete ap$self$JwkObj['qi'];
+		delete ap$self$JwkObj['dp'];
+		delete ap$self$JwkObj['dq'];
 
 		const ap$selfPub$CK = await globalThis.crypto.subtle.importKey(
 			'jwk',
-			ap$selfPub$JwkObj,
+			ap$self$JwkObj,
 			{ ['name']: 'ECDH', ['namedCurve']: ap$self$JwkObj['crv'] },
 			true,
 			[],
 		);
 
-		return await deriveKeyId(ap$selfPub$CK);
+		const ap$self$Kid = await deriveKeyId(ap$selfPub$CK);
+
+		return [ap$self$CK, ap$selfPub$CK, ap$self$Kid];
 	})();
+
+	const ctx = {
+		['ap$selfPub$CK']: ap$selfPub$CK,
+		['ap$self$Kid']: ap$self$Kid,
+	};
 
 	const derivedIncomingKeys = Object.fromEntries(
 		await Promise.all(
@@ -150,13 +176,14 @@ const amqpWorker = async (
 						errorHandler(
 							new UnsupportedMessageWarning(),
 							msg.properties,
+							ctx,
 						)?.map(outgoingMessageHelper) ?? [],
 					).catch(Boolean);
 
 				ch.reject(msg, false);
 			}
 
-			Promise.resolve(propertiesValidator(msg.properties))
+			Promise.resolve(propertiesValidator(msg.properties, ctx))
 				.then(async () => {
 					const encodedVerificationTag =
 						msg.properties.headers['x-request-integrity'];
@@ -212,6 +239,7 @@ const amqpWorker = async (
 						const result = await messageHandler(
 							msg.properties,
 							decryptedPayload,
+							ctx,
 						);
 
 						return result;
@@ -245,6 +273,7 @@ const amqpWorker = async (
 										? e
 										: new ProcessingError(e),
 									msg.properties,
+									ctx,
 								)?.map(outgoingMessageHelper) ?? [],
 							).catch(Boolean);
 					} catch (e) {
