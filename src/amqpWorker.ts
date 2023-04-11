@@ -30,6 +30,7 @@ import { autobb } from './lib/base64url';
 import deriveKeyId from './lib/deriveKeyId';
 import { decryptPayload } from './lib/encryptPayload';
 import normalizeHeaders from './lib/normalizeHeaders';
+import parseJwk from './lib/parseJwk';
 
 export type TAmqpWorkerContext = {
 	['ap$selfPub$CK']: CryptoKey;
@@ -63,43 +64,12 @@ const amqpWorker = async (
 ) => {
 	const textEncoder = new TextEncoder();
 
-	const [ap$self$CK, ap$selfPub$CK, ap$self$Kid] = await (async () => {
-		const ap$self$JwkObj = JSON.parse(ap$self$);
-		// Clear ap$self$
-		ap$self$ = undefined as unknown as string;
-
-		const ap$self$CK = await globalThis.crypto.subtle.importKey(
-			'jwk',
-			ap$self$JwkObj,
-			{ ['name']: 'ECDH', ['namedCurve']: ap$self$JwkObj['crv'] },
-			false,
-			['deriveKey'],
-		);
-
-		// To get the KID, we need an extractable
-		// public key.
-		// We delete all the secret values from ap$self$JwkObj
-		// For ECDH / OKP keys, this is only 'd', but if we happened
-		// to have an RSA key, we'd have some additional secret values
-		delete ap$self$JwkObj['d'];
-		delete ap$self$JwkObj['p'];
-		delete ap$self$JwkObj['q'];
-		delete ap$self$JwkObj['qi'];
-		delete ap$self$JwkObj['dp'];
-		delete ap$self$JwkObj['dq'];
-
-		const ap$selfPub$CK = await globalThis.crypto.subtle.importKey(
-			'jwk',
-			ap$self$JwkObj,
-			{ ['name']: 'ECDH', ['namedCurve']: ap$self$JwkObj['crv'] },
-			true,
-			[],
-		);
-
-		const ap$self$Kid = await deriveKeyId(ap$selfPub$CK);
-
-		return [ap$self$CK, ap$selfPub$CK, ap$self$Kid];
-	})();
+	const {
+		['CKP']: { ['privateKey']: ap$self$CK, ['publicKey']: ap$selfPub$CK },
+		['kId']: ap$self$Kid,
+	} = await parseJwk(ap$self$);
+	// Clear ap$self$
+	ap$self$ = undefined as unknown as string;
 
 	const ctx = {
 		['ap$selfPub$CK']: ap$selfPub$CK,
