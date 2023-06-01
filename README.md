@@ -1,5 +1,12 @@
 # AMQP Worker
 
+ [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=Exact-Realty_ts-amqp-workers&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=Exact-Realty_ts-amqp-workers)
+ [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=Exact-Realty_ts-amqp-workers&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=Exact-Realty_ts-amqp-workers)
+ [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Exact-Realty_ts-amqp-workers&metric=bugs)](https://sonarcloud.io/summary/new_code?id=Exact-Realty_ts-amqp-workers)
+ [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Exact-Realty_ts-amqp-workers&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Exact-Realty_ts-amqp-workers)
+ [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=Exact-Realty_ts-amqp-workers&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=Exact-Realty_ts-amqp-workers)
+ ![NPM Downloads](https://img.shields.io/npm/dw/@exact-realty/amqp-workers?style=flat-square)
+
 This code implements an AMQP worker which listens to an input queue, validates the metadata of incoming messages, decrypts them and passes the decrypted message to a message handler function. The handler function can return a list of messages to be produced on several output queues.
 
 ## Usage
