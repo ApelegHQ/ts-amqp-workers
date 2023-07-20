@@ -45,9 +45,10 @@ const amqpWorker = async (
 	sourceJwkPublicKeys: string[],
 	incomingSchemaIds: string[],
 	propertiesValidator: {
-		(props: amqplib.MessageProperties, ctx: TAmqpWorkerContext):
-			| Promise<boolean>
-			| boolean;
+		(
+			props: amqplib.MessageProperties,
+			ctx: TAmqpWorkerContext,
+		): Promise<boolean> | boolean;
 	},
 	messageHandler: {
 		(
@@ -57,9 +58,11 @@ const amqpWorker = async (
 		): Promise<TAmqpProducerParams[] | void> | TAmqpProducerParams[] | void;
 	},
 	errorHandler?: {
-		(e: Error, props: amqplib.MessageProperties, ctx: TAmqpWorkerContext):
-			| TAmqpProducerParams[]
-			| void;
+		(
+			e: Error,
+			props: amqplib.MessageProperties,
+			ctx: TAmqpWorkerContext,
+		): TAmqpProducerParams[] | void;
 	},
 ) => {
 	const textEncoder = new TextEncoder();
